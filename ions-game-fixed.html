@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chemistry Ions Game</title>
+<style>
+  :root{--bg:#0f172a;--panel:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#22d3ee;--accent-2:#34d399;--warn:#fca5a5}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 800px at 10% -10%, #1f2937 0%, var(--bg) 40%),radial-gradient(900px 600px at 110% 10%, #0b1220 0%, var(--bg) 50%);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}
+  .app{width:min(100%,1100px);background:linear-gradient(180deg, rgba(255,255,255,.02),rgba(255,255,255,.00));border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:18px 18px 8px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter: blur(6px)}
+  header{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .title{display:flex;align-items:center;gap:10px}.title h1{font-size:22px;margin:0}.sub{color:var(--muted);font-size:13px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap}
+  select,button,input,textarea{background:#0b1220;color:var(--text);border:1px solid rgba(255,255,255,.08);padding:8px 10px;border-radius:10px;font:inherit}
+  button{cursor:pointer;transition:transform .02s ease} button:active{transform:translateY(1px)}
+  .btn-accent{border-color:transparent;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#0b1220;font-weight:700}
+  .btn-ghost{background:transparent}
+  .layout{display:grid;grid-template-columns:1fr 380px;gap:14px;margin-top:14px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.02), rgba(255,255,255,.01));border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px;min-height:240px}
+  .big{display:flex;align-items:center;justify-content:center;text-align:center;font-size: clamp(26px, 6vw, 48px);font-weight:800;letter-spacing:.5px;min-height:180px}
+  .hint{color:var(--muted);font-size:14px;text-align:center;margin-top:6px}
+  .row{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .row input[type=text]{min-width:260px}
+  .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .tag{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:var(--muted)}
+  .good{color:#a7f3d0}.bad{color:#fecaca}
+  .score{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:10px;font-size:14px;color:var(--muted)}
+  .sidebar h3{margin:.2rem 0 0.4rem 0;font-size:16px}
+  .list{max-height:400px;overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:10px}
+  .list table{width:100%;border-collapse:collapse}
+  .list th,.list td{padding:8px 10px;font-size:14px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .list tr:hover td{background:rgba(255,255,255,.03)}
+  .list .actions button{font-size:12px;padding:2px 8px}
+  .muted{color:var(--muted)} .small{font-size:12px} .flex{display:flex;gap:8px;flex-wrap:wrap}
+  .hr{height:1px;background:rgba(255,255,255,.08);margin:10px 0}
+  .footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:12px}
+  .kbd{border:1px solid rgba(255,255,255,.2);padding:0 6px;border-radius:6px;font-weight:700}
+  @media (max-width: 900px){.layout{grid-template-columns: 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="title">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm3 0v12m10-12v12M4 8h16" stroke="url(#g)" stroke-width="1.5"/><defs><linearGradient id="g" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs></svg>
+      <div>
+        <h1>Chemistry Ions Game</h1>
+        <div class="sub">Practice ions with flashcards & quizzes. Add your own and they’ll be saved in your browser.</div>
+      </div>
+    </div>
+    <div class="controls">
+      <select id="mode">
+        <option value="name2formula">Name → Formula</option>
+        <option value="formula2name">Formula → Name</option>
+        <option value="multiple">Multiple Choice</option>
+        <option value="flash">Flashcards</option>
+      </select>
+      <button id="next" class="btn-accent">Start ▶</button>
+      <button id="reveal" class="btn-ghost">Reveal <span class="small muted">(Space)</span></button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main class="card">
+      <div id="prompt" class="big">Press <span class="kbd">Start</span> to begin</div>
+      <div class="hint" id="hint"></div>
+      <div id="answerArea" class="row" style="display:none">
+        <input id="answer" type="text" placeholder="Type your answer…" autocomplete="off" />
+        <button id="submitBtn" class="btn-accent">Check</button>
+        <button id="skip" class="btn-ghost">Skip</button>
+      </div>
+      <div id="choices" class="row" style="display:none"></div>
+      <div class="tags" id="tags"></div>
+      <div class="score" id="score">—</div>
+    </main>
+
+    <aside class="sidebar card">
+      <div class="flex" style="justify-content:space-between; align-items:center">
+        <h3>🧾 Ion Bank</h3>
+        <div class="small muted">Total: <span id="count">0</span></div>
+      </div>
+      <div class="list">
+        <table id="ionTable">
+          <thead><tr><th style="width:45%">Name</th><th style="width:35%">Formula</th><th class="actions" style="width:20%">Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="hr"></div>
+      <h3>➕ Add Ion</h3>
+      <div class="flex">
+        <input id="newName" type="text" placeholder="e.g., Perchlorate" />
+        <input id="newFormula" type="text" placeholder="e.g., ClO4−" />
+        <button id="add" class="btn-accent">Add</button>
+      </div>
+      <div class="small muted" style="margin-top:6px">Tip: Use Unicode charges like ²⁺, ³⁻ or plain text like ^2+, -2.</div>
+
+      <details style="margin-top:10px">
+        <summary class="muted">📥 Bulk Import</summary>
+        <div class="small muted" style="margin:6px 0 4px">One entry per line: <em>Name, Formula</em></div>
+        <textarea id="bulk" rows="5" style="width:100%" placeholder="Acetate, C2H3O2−"></textarea>
+        <div class="flex" style="margin-top:6px">
+          <button id="import" class="btn-accent">Import</button>
+          <button id="export" class="btn-ghost">Export JSON</button>
+          <button id="reset" class="btn-ghost" title="Reset to default set">Reset to Defaults</button>
+        </div>
+      </details>
+    </aside>
+  </div>
+
+  <div class="footer">
+    <div>Made for Ronnie & daughter — ions practice that grows with you.</div>
+    <div><span class="muted">Shortcuts:</span> <span class="kbd">Space</span> reveal • <span class="kbd">Enter</span> submit • <span class="kbd">N</span> next</div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const save = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+const load = (k,d) => { try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(e){ return d } };
+const shuffle = a => a.sort(()=>Math.random()-0.5);
+const sample = (a,n) => shuffle([...a]).slice(0,n);
+
+function normalizeFormula(str){
+  if(!str) return "";
+  str = (""+str).trim()
+    .replace(/[\u2070-\u2079]/g, m => String.fromCharCode(m.charCodeAt(0)-0x2040))
+    .replace(/[⁺]/g, "+").replace(/[⁻–—]/g, "-")
+    .replace(/\s/g,"");
+  str = str.replace(/\^?(\d+)([+-])$/,"$2$1"); // move sign first
+  str = str.replace(/([+-])(\d+)$/, "$2$1");   // digits then sign
+  return str.toUpperCase();
+}
+function prettyFormula(str){
+  return (""+str)
+    .replace(/(\d+)([+-])$/g, (_,d,s)=>[...d].map(x=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[x]).join("")+(s==="+"?"⁺":"⁻"))
+    .replace(/([0-9])([+-])/g, (_,d,s)=> "⁰¹²³⁴⁵⁶⁷⁸⁹"[d] + (s==="+"?"⁺":"⁻"));
+}
+
+const DEFAULT_IONS = [
+  {name:"Hydrogen", formula:"H+"},{name:"Hydronium", formula:"H3O+"},{name:"Potassium", formula:"K+"},
+  {name:"Silver", formula:"Ag+"},{name:"Sodium", formula:"Na+"},{name:"Ammonium", formula:"NH4+"},
+  {name:"Barium", formula:"Ba2+"},{name:"Beryllium", formula:"Be2+"},{name:"Cadmium", formula:"Cd2+"},
+  {name:"Calcium", formula:"Ca2+"},{name:"Cobalt (II)", formula:"Co2+"},{name:"Copper (II)", formula:"Cu2+"},
+  {name:"Iron (II)", formula:"Fe2+"},{name:"Lead (II)", formula:"Pb2+"},{name:"Magnesium", formula:"Mg2+"},
+  {name:"Mercury (I)", formula:"Hg2^2+"},{name:"Mercury (II)", formula:"Hg^2+"},
+  {name:"Nickel (II)", formula:"Ni2+"},{name:"Zinc (II)", formula:"Zn2+"},{name:"Chromium (III)", formula:"Cr3+"},
+  {name:"Aluminum", formula:"Al3+"},{name:"Iron (III)", formula:"Fe3+"},{name:"Fluoride", formula:"F-"},
+  {name:"Iodide", formula:"I-"},{name:"Bromide", formula:"Br-"},
+  {name:"Perchlorate", formula:"ClO4-"},{name:"Chlorate", formula:"ClO3-"},{name:"Chlorite", formula:"ClO2-"},
+  {name:"Hypochlorite", formula:"ClO-"},{name:"Chloride", formula:"Cl-"},
+  {name:"Cyanide", formula:"CN-"},{name:"Acetate", formula:"C2H3O2-"},
+  {name:"Hydrogen Sulfate", formula:"HSO4-"},{name:"Hydrogen Sulfide", formula:"HS-"},
+  {name:"Hydroxide", formula:"OH-"},{name:"Nitrate", formula:"NO3-"},{name:"Nitrite", formula:"NO2-"},
+  {name:"Nitride", formula:"N3-"},{name:"Permanganate", formula:"MnO4-"},
+  {name:"Bicarbonate", formula:"HCO3-"},{name:"Carbonate", formula:"CO3^2-"},
+  {name:"Chromate", formula:"CrO4^2-"},{name:"Dichromate", formula:"Cr2O7^2-"},
+  {name:"Oxide", formula:"O^2-"},{name:"Peroxide", formula:"O2^2-"},
+  {name:"Oxalate", formula:"C2O4^2-"},{name:"Sulfate", formula:"SO4^2-"},
+  {name:"Sulfite", formula:"SO3^2-"},{name:"Sulfide", formula:"S^2-"},
+  {name:"Phosphate", formula:"PO4^3-"}
+].map(x=>({name:x.name, formula:normalizeFormula(x.formula)}));
+
+let ions = load("ions-bank", DEFAULT_IONS);
+let score = {correct:0,total:0,streak:0};
+let current = null;
+
+const modeSel = $("#mode");
+const answerInput = $("#answer");
+const promptEl = $("#prompt");
+const hintEl = $("#hint");
+const answerArea = $("#answerArea");
+const choices = $("#choices");
+const tags = $("#tags");
+const scoreBox = $("#score");
+
+function syncTable(){
+  const tbody = $("#ionTable tbody");
+  tbody.innerHTML = "";
+  ions.forEach((ion, idx)=>{
+    const tr = document.createElement("tr");
+    const td1 = document.createElement("td"); td1.textContent = ion.name;
+    const td2 = document.createElement("td"); td2.innerHTML = "<b>"+prettyFormula(ion.formula)+"</b>";
+    const td3 = document.createElement("td"); td3.className="actions";
+    td3.innerHTML = `<button data-edit="${idx}">Edit</button> <button data-del="${idx}">Delete</button>`;
+    tr.append(td1,td2,td3); tbody.appendChild(tr);
+  });
+  $("#count").textContent = ions.length;
+  save("ions-bank", ions);
+}
+syncTable();
+
+$("#ionTable").addEventListener("click", (e)=>{
+  const i = e.target.getAttribute("data-edit");
+  const d = e.target.getAttribute("data-del");
+  if(i!==null){
+    const idx = +i;
+    const nm = window.prompt("Edit name", ions[idx].name);
+    if(nm===null) return;
+    const fm = window.prompt("Edit formula", ions[idx].formula);
+    if(fm===null) return;
+    ions[idx] = {name:nm.trim(), formula: normalizeFormula(fm)};
+    syncTable();
+  }else if(d!==null){
+    ions.splice(+d,1); syncTable();
+  }
+});
+
+$("#add").onclick = ()=>{
+  const name = $("#newName").value.trim();
+  const formula = $("#newFormula").value.trim();
+  if(!name || !formula) return alert("Please provide both a name and a formula.");
+  ions.push({name, formula:normalizeFormula(formula)});
+  $("#newName").value = $("#newFormula").value = "";
+  syncTable();
+};
+$("#import").onclick = ()=>{
+  const raw = $("#bulk").value.trim();
+  if(!raw) return;
+  const lines = raw.split(/\n+/); let added = 0;
+  lines.forEach(l=>{
+    const m = l.split(",").map(s=>s.trim()).filter(Boolean);
+    if(m.length>=2){ ions.push({name:m[0], formula:normalizeFormula(m[1])}); added++; }
+  });
+  alert(`Imported ${added} ions.`); $("#bulk").value = ""; syncTable();
+};
+$("#export").onclick = ()=>{
+  const data = JSON.stringify(ions, null, 2);
+  const blob = new Blob([data],{type:"application/json"});
+  const url = URL.createObjectURL(blob); const a = document.createElement("a");
+  a.href = url; a.download = "ions.json"; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000);
+};
+$("#reset").onclick = ()=>{
+  if(confirm("Reset the Ion Bank to the default 50 ions?")){ ions = [...DEFAULT_IONS]; syncTable(); }
+};
+
+function nextQuestion(){
+  if(!ions.length){ alert("Your Ion Bank is empty. Add ions first!"); return; }
+  current = sample(ions, 1)[0]; const mode = modeSel.value;
+  tags.innerHTML = ""; $("#reveal").disabled = false;
+
+  if(mode === "flash"){
+    answerArea.style.display = "none"; choices.style.display = "none";
+    promptEl.innerHTML = `<div><div class="small muted">Flashcard</div><div>${current.name}</div></div>`;
+    hintEl.textContent = ""; scoreBox.textContent = "Tap Reveal to see formula"; return;
+  }
+  if(mode === "multiple"){
+    answerArea.style.display = "none"; choices.style.display = "flex";
+    promptEl.textContent = current.name; hintEl.textContent = "Pick the correct formula";
+    const opts = sample(ions.filter(i=>i!==current), 3).concat([current]); shuffle(opts);
+    choices.innerHTML = ""; opts.forEach(opt=>{
+      const b = document.createElement("button");
+      b.textContent = prettyFormula(opt.formula); b.onclick = ()=>check(opt.formula); choices.appendChild(b);
+    });
+  } else {
+    choices.style.display = "none"; answerArea.style.display = "flex"; answerInput.value = ""; answerInput.focus();
+    if(mode === "name2formula"){ promptEl.textContent = current.name; hintEl.textContent = "Type the correct formula"; answerInput.placeholder = "e.g., NO3- or O^2-"; }
+    else { promptEl.innerHTML = prettyFormula(current.formula); hintEl.textContent = "Type the ion name"; answerInput.placeholder = "e.g., Nitrate"; }
+  }
+  updateScore();
+}
+function reveal(){
+  const mode = modeSel.value; $("#reveal").disabled = true;
+  if(mode === "flash"){ hintEl.innerHTML = `<b>${prettyFormula(current.formula)}</b>`; }
+  else if(mode==="name2formula"){ tags.innerHTML = `<span class="tag">Answer: <b>${prettyFormula(current.formula)}</b></span>`; }
+  else if(mode==="formula2name"){ tags.innerHTML = `<span class="tag">Answer: <b>${current.name}</b></span>`; }
+  else { $$("#choices button").forEach(b=>{ if(normalizeFormula(b.textContent) === current.formula){ b.style.outline = "2px solid var(--accent)"; } }); }
+}
+function check(answer){
+  const mode = modeSel.value; let ok = false;
+  if(mode === "multiple" || mode === "name2formula"){ ok = normalizeFormula(answer || answerInput.value) === current.formula; }
+  else if(mode === "formula2name"){ ok = (answer || answerInput.value).trim().toLowerCase() === current.name.toLowerCase(); }
+  score.total++; if(ok){ score.correct++; score.streak++; feedback(true); } else { score.streak = 0; feedback(false); }
+  updateScore(); setTimeout(nextQuestion, 650);
+}
+function feedback(ok){
+  if(ok){ tags.innerHTML = `<span class="tag good">Correct!</span>`; }
+  else { tags.innerHTML = `<span class="tag bad">Oops — ${modeSel.value==='formula2name' ? 'It was' : 'Answer'} <b>${modeSel.value==='formula2name' ? current.name : prettyFormula(current.formula)}</b></span>`; }
+}
+function updateScore(){ scoreBox.innerHTML = `Score: <b>${score.correct}/${score.total}</b> • Streak: <b>${score.streak}</b>`; }
+
+$("#next").onclick = nextQuestion;
+$("#reveal").onclick = reveal;
+$("#submitBtn").onclick = ()=>check();
+$("#skip").onclick = nextQuestion;
+document.addEventListener("keydown",(e)=>{
+  if(e.code==="Space"){ e.preventDefault(); reveal(); }
+  if(e.key==="Enter"){ check(); }
+  if(e.key.toLowerCase()==="n"){ nextQuestion(); }
+});
+</script>
+</body>
+</html>
