@@ -54,7 +54,7 @@
       <select id="mode">
         <option value="name2formula">Name → Formula</option>
         <option value="formula2name">Formula → Name</option>
-        <option value="multiple">Multiple Choice</option>
+        <option value="multiple" selected>Multiple Choice</option>
         <option value="flash">Flashcards</option>
       </select>
       <button id="next" class="btn-accent">Start ▶</button>
@@ -76,7 +76,6 @@
       <div class="score" id="score">—</div>
     </main>
 
-    <!-- Sidebar exists but is hidden unless teacher mode is enabled -->
     <aside id="sidebar" class="sidebar card hidden">
       <div class="flex" style="justify-content:space-between; align-items:center">
         <h3>🧾 Ion Bank</h3>
@@ -112,7 +111,6 @@
 
   <div class="footer">
     <div>Made for Abbie.</div>
-    <!-- No public tips here -->
   </div>
 </div>
 
@@ -201,7 +199,7 @@ const scoreBox = document.getElementById("score");
 
 function syncTable(){
   const tbody = document.querySelector("#ionTable tbody");
-  if(!tbody) return; // In case sidebar hidden
+  if(!tbody) return; // if sidebar hidden
   tbody.innerHTML = "";
   ions.forEach((ion, idx)=>{
     const tr = document.createElement("tr");
@@ -264,6 +262,9 @@ if(ionTable){
 }
 
 /* ===== Quiz Engine ===== */
+// Default mode to Multiple Choice explicitly
+modeSel.value = "multiple";
+
 function nextQuestion(){
   if(!ions.length){ alert("Your Ion Bank is empty. Add ions first!"); return; }
   current = sample(ions, 1)[0]; const mode = modeSel.value;
@@ -314,6 +315,7 @@ document.getElementById("reveal").onclick = reveal;
 document.getElementById("submitBtn").onclick = ()=>check();
 document.getElementById("skip").onclick = nextQuestion;
 
+// Keyboard shortcuts
 document.addEventListener("keydown",(e)=>{
   if(e.code==="Space"){ e.preventDefault(); reveal(); }
   if(e.key==="Enter"){ check(); }
