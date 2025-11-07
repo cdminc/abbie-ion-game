@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Chemistry Ions Game</title>
+<title>Chemistry Ions Game — Abbie</title>
 <style>
   :root{--bg:#0f172a;--panel:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#22d3ee;--accent-2:#34d399}
   *{box-sizing:border-box} html,body{height:100%}
@@ -99,7 +99,7 @@
       <details style="margin-top:10px">
         <summary class="muted">📥 Bulk Import</summary>
         <div class="small muted" style="margin:6px 0 4px">One entry per line: <em>Name, Formula</em></div>
-        <textarea id="bulk" rows="5" style="width:100%" placeholder="Acetate, C2H3O2−"></textarea>
+        <textarea id="bulk" rows="6" style="width:100%" placeholder="Acetate, C2H3O2−&#10;Nitrate, NO3−"></textarea>
         <div class="flex" style="margin-top:6px">
           <button id="import" class="btn-accent">Import</button>
           <button id="export" class="btn-ghost">Export JSON</button>
@@ -123,47 +123,88 @@ const load = (k,d) => { try{ return JSON.parse(localStorage.getItem(k)) ?? d }ca
 const shuffle = a => a.sort(()=>Math.random()-0.5);
 const sample = (a,n) => shuffle([...a]).slice(0,n);
 
+// If already has superscripts/subscripts, keep as-is; else pretty-print ASCII like CO3^2- → CO₃²⁻
+function prettyFormula(str){
+  const s = String(str);
+  if(/[⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉⁺⁻]/.test(s)) return s;
+  const sup = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻'};
+  // Turn CO3^2- or CO32- into CO₃²⁻
+  let out = s.replace(/([A-Za-z\)])(\d+)/g, (_,el,d)=> el + d.split('').map(x=>({'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'})[x]||x).join(''));
+  out = out.replace(/\^?(\d+)([+-])$/,(m,d,sign)=> d.split('').map(x=>sup[x]||x).join('') + sup[sign]);
+  out = out.replace(/([+-])(\d+)$/,(m,sign,d)=> d.split('').map(x=>sup[x]||x).join('') + sup[sign]);
+  return out;
+}
+// Normalize to compare answers: accept CO3^2-, CO₃²⁻, CO32-, etc.
 function normalizeFormula(str){
   if(!str) return "";
-  str = (""+str).trim()
-    .replace(/[\u2070-\u2079]/g, m => String.fromCharCode(m.charCodeAt(0)-0x2040))
-    .replace(/[⁺]/g, "+").replace(/[⁻–—]/g, "-")
-    .replace(/\s/g,"");
-  str = str.replace(/\^?(\d+)([+-])$/,"$2$1");
-  str = str.replace(/([+-])(\d+)$/, "$2$1");
-  return str.toUpperCase();
-}
-function prettyFormula(str){
-  return (""+str)
-    .replace(/(\d+)([+-])$/g, (_,d,s)=>[...d].map(x=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[x]).join("")+(s==="+"?"⁺":"⁻"))
-    .replace(/([0-9])([+-])/g, (_,d,s)=> "⁰¹²³⁴⁵⁶⁷⁸⁹"[d] + (s==="+"?"⁺":"⁻"));
+  let t = String(str).trim();
+  const supDigitMap = {'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁺':'+','⁻':'-'};
+  t = t.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]/g, m=> supDigitMap[m] ?? m).replace(/\s/g,'');
+  t = t.replace(/\^?(\d+)([+-])$/,"$2$1"); // move sign first if needed
+  t = t.replace(/([+-])(\d+)$/,"$2$1");    // digits then sign
+  return t.toUpperCase();
 }
 
-/* ===== Data ===== */
+/* ===== Built-in Data (55 ions) ===== */
 const DEFAULT_IONS = [
-  {name:"Hydrogen", formula:"H^+"},{name:"Hydronium", formula:"H^3O^+"},{name:"Potassium", formula:"K+"},
-  {name:"Silver", formula:"Ag+"},{name:"Sodium", formula:"Na+"},{name:"Ammonium", formula:"NH4+"},
-  {name:"Barium", formula:"Ba2+"},{name:"Beryllium", formula:"Be2+"},{name:"Cadmium", formula:"Cd2+"},
-  {name:"Calcium", formula:"Ca2+"},{name:"Cobalt (II)", formula:"Co2+"},{name:"Copper (II)", formula:"Cu2+"},
-  {name:"Iron (II)", formula:"Fe2+"},{name:"Lead (II)", formula:"Pb2+"},{name:"Magnesium", formula:"Mg2+"},
-  {name:"Mercury (I)", formula:"Hg2^2+"},{name:"Mercury (II)", formula:"Hg^2+"},
-  {name:"Nickel (II)", formula:"Ni2+"},{name:"Zinc (II)", formula:"Zn2+"},{name:"Chromium (III)", formula:"Cr3+"},
-  {name:"Aluminum", formula:"Al3+"},{name:"Iron (III)", formula:"Fe3+"},{name:"Fluoride", formula:"F-"},
-  {name:"Iodide", formula:"I-"},{name:"Bromide", formula:"Br-"},
-  {name:"Perchlorate", formula:"ClO4-"},{name:"Chlorate", formula:"ClO3-"},{name:"Chlorite", formula:"ClO2-"},
-  {name:"Hypochlorite", formula:"ClO-"},{name:"Chloride", formula:"Cl-"},
-  {name:"Cyanide", formula:"CN-"},{name:"Acetate", formula:"C2H3O2-"},
-  {name:"Hydrogen Sulfate", formula:"HSO4-"},{name:"Hydrogen Sulfide", formula:"HS-"},
-  {name:"Hydroxide", formula:"OH-"},{name:"Nitrate", formula:"NO3-"},{name:"Nitrite", formula:"NO2-"},
-  {name:"Nitride", formula:"N3-"},{name:"Permanganate", formula:"MnO4-"},
-  {name:"Bicarbonate", formula:"HCO3-"},{name:"Carbonate", formula:"CO3^2-"},
-  {name:"Chromate", formula:"CrO4^2-"},{name:"Dichromate", formula:"Cr2O7^2-"},
-  {name:"Oxide", formula:"O^2-"},{name:"Peroxide", formula:"O2^2-"},
-  {name:"Oxalate", formula:"C2O4^2-"},{name:"Sulfate", formula:"SO4^2-"},
-  {name:"Sulfite", formula:"SO3^2-"},{name:"Sulfide", formula:"S^2-"},
-  {name:"Phosphate", formula:"PO4^3-"}
-].map(x=>({name:x.name, formula:normalizeFormula(x.formula)}));
+  {name:"Hydrogen", formula:"H⁺"},
+  {name:"Hydronium", formula:"H₃O⁺"},
+  {name:"Potassium", formula:"K⁺"},
+  {name:"Silver", formula:"Ag⁺"},
+  {name:"Sodium", formula:"Na⁺"},
+  {name:"Ammonium", formula:"NH₄⁺"},
+  {name:"Barium", formula:"Ba²⁺"},
+  {name:"Beryllium", formula:"Be²⁺"},
+  {name:"Cadmium", formula:"Cd²⁺"},
+  {name:"Calcium", formula:"Ca²⁺"},
+  {name:"Cobalt (II)", formula:"Co²⁺"},
+  {name:"Copper (II)", formula:"Cu²⁺"},
+  {name:"Iron (II)", formula:"Fe²⁺"},
+  {name:"Lead (II)", formula:"Pb²⁺"},
+  {name:"Magnesium", formula:"Mg²⁺"},
+  {name:"Mercury (I)", formula:"Hg₂²⁺"},
+  {name:"Mercury (II)", formula:"Hg²⁺"},
+  {name:"Nickel (II)", formula:"Ni²⁺"},
+  {name:"Zinc (II)", formula:"Zn²⁺"},
+  {name:"Chromium (III)", formula:"Cr³⁺"},
+  {name:"Aluminum", formula:"Al³⁺"},
+  {name:"Iron (III)", formula:"Fe³⁺"},
+  {name:"Fluoride", formula:"F⁻"},
+  {name:"Iodide", formula:"I⁻"},
+  {name:"Bromide", formula:"Br⁻"},
+  {name:"Bromate", formula:"BrO₃⁻"},
+  {name:"Perchlorate", formula:"ClO₄⁻"},
+  {name:"Chlorate", formula:"ClO₃⁻"},
+  {name:"Chlorite", formula:"ClO₂⁻"},
+  {name:"Hypochlorite", formula:"ClO⁻"},
+  {name:"Chloride", formula:"Cl⁻"},
+  {name:"Cyanide", formula:"CN⁻"},
+  {name:"Acetate", formula:"C₂H₃O₂⁻"},
+  {name:"Hydrogen Sulfate", formula:"HSO₄⁻"},
+  {name:"Hydrogen Sulfide", formula:"HS⁻"},
+  {name:"Hydroxide", formula:"OH⁻"},
+  {name:"Nitrate", formula:"NO₃⁻"},
+  {name:"Nitrite", formula:"NO₂⁻"},
+  {name:"Nitride", formula:"N³⁻"},
+  {name:"Amide", formula:"NH₂⁻"},
+  {name:"Permanganate", formula:"MnO₄⁻"},
+  {name:"Bicarbonate", formula:"HCO₃⁻"},
+  {name:"Carbonate", formula:"CO₃²⁻"},
+  {name:"Chromate", formula:"CrO₄²⁻"},
+  {name:"Dichromate", formula:"Cr₂O₇²⁻"},
+  {name:"Oxide", formula:"O²⁻"},
+  {name:"Peroxide", formula:"O₂²⁻"},
+  {name:"Oxalate", formula:"C₂O₄²⁻"},
+  {name:"Sulfate", formula:"SO₄²⁻"},
+  {name:"Sulfite", formula:"SO₃²⁻"},
+  {name:"Sulfide", formula:"S²⁻"},
+  {name:"Phosphate", formula:"PO₄³⁻"},
+  {name:"Diphosphate", formula:"P₂O₇⁴⁻"},
+  {name:"Phosphide", formula:"P³⁻"},
+  {name:"Bismuthate", formula:"BiO₃⁻"}
+];
 
+/* ===== State ===== */
 let ions = load("ions-bank", DEFAULT_IONS);
 let score = {correct:0,total:0,streak:0};
 let current = null;
@@ -171,7 +212,6 @@ let current = null;
 /* ===== Teacher Mode (hidden by default) ===== */
 const urlParams = new URLSearchParams(location.search);
 let teacherMode = urlParams.get("edit")==="1" || load("ions-teacher", false) === true;
-
 const sidebar = document.getElementById("sidebar");
 function applyTeacherMode(){
   if(teacherMode){ sidebar.classList.remove("hidden"); }
@@ -179,8 +219,7 @@ function applyTeacherMode(){
   save("ions-teacher", teacherMode);
 }
 applyTeacherMode();
-
-// Toggle with Shift+E (silent; not advertised in UI)
+// Toggle with Shift+E (silent)
 document.addEventListener("keydown", (e)=>{
   if(e.shiftKey && e.key.toLowerCase()==="e"){
     teacherMode = !teacherMode; applyTeacherMode();
@@ -199,23 +238,24 @@ const scoreBox = document.getElementById("score");
 
 function syncTable(){
   const tbody = document.querySelector("#ionTable tbody");
-  if(!tbody) return; // if sidebar hidden
-  tbody.innerHTML = "";
-  ions.forEach((ion, idx)=>{
-    const tr = document.createElement("tr");
-    const td1 = document.createElement("td"); td1.textContent = ion.name;
-    const td2 = document.createElement("td"); td2.innerHTML = "<b>"+prettyFormula(ion.formula)+"</b>";
-    const td3 = document.createElement("td"); td3.className="actions";
-    td3.innerHTML = `<button data-edit="${idx}">Edit</button> <button data-del="${idx}">Delete</button>`;
-    tr.append(td1,td2,td3); tbody.appendChild(tr);
-  });
-  const countEl = document.getElementById("count");
-  if(countEl) countEl.textContent = ions.length;
+  if(tbody){
+    tbody.innerHTML = "";
+    ions.forEach((ion, idx)=>{
+      const tr = document.createElement("tr");
+      const td1 = document.createElement("td"); td1.textContent = ion.name;
+      const td2 = document.createElement("td"); td2.textContent = prettyFormula(ion.formula);
+      const td3 = document.createElement("td"); td3.className="actions";
+      td3.innerHTML = `<button data-edit="${idx}">Edit</button> <button data-del="${idx}">Delete</button>`;
+      tr.append(td1,td2,td3); tbody.appendChild(tr);
+    });
+    const countEl = document.getElementById("count");
+    if(countEl) countEl.textContent = ions.length;
+  }
   save("ions-bank", ions);
 }
 syncTable();
 
-// Table events (only when sidebar visible)
+// Table events (only when sidebar is present)
 const ionTable = document.getElementById("ionTable");
 if(ionTable){
   ionTable.addEventListener("click", (e)=>{
@@ -227,7 +267,7 @@ if(ionTable){
       if(nm===null) return;
       const fm = window.prompt("Edit formula", ions[idx].formula);
       if(fm===null) return;
-      ions[idx] = {name:nm.trim(), formula: normalizeFormula(fm)};
+      ions[idx] = {name:nm.trim(), formula: fm.trim()};
       syncTable();
     }else if(d!==null){
       ions.splice(+d,1); syncTable();
@@ -237,7 +277,7 @@ if(ionTable){
     const name = document.getElementById("newName").value.trim();
     const formula = document.getElementById("newFormula").value.trim();
     if(!name || !formula) return alert("Please provide both a name and a formula.");
-    ions.push({name, formula:normalizeFormula(formula)});
+    ions.push({name, formula});
     document.getElementById("newName").value = document.getElementById("newFormula").value = "";
     syncTable();
   };
@@ -246,7 +286,7 @@ if(ionTable){
     const lines = raw.split(/\n+/); let added = 0;
     lines.forEach(l=>{
       const m = l.split(",").map(s=>s.trim()).filter(Boolean);
-      if(m.length>=2){ ions.push({name:m[0], formula:normalizeFormula(m[1])}); added++; }
+      if(m.length>=2){ ions.push({name:m[0], formula:m[1]}); added++; }
     });
     alert(`Imported ${added} ions.`); document.getElementById("bulk").value = ""; syncTable();
   };
@@ -257,12 +297,12 @@ if(ionTable){
     a.href = url; a.download = "ions.json"; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000);
   };
   document.getElementById("reset").onclick = ()=>{
-    if(confirm("Reset the Ion Bank to the default 50 ions?")){ ions = [...DEFAULT_IONS]; syncTable(); }
+    if(confirm("Reset the Ion Bank to the 55-ion default set?")){ ions = [...DEFAULT_IONS]; syncTable(); }
   };
 }
 
 /* ===== Quiz Engine ===== */
-// Default mode to Multiple Choice explicitly
+// Force default to Multiple Choice
 modeSel.value = "multiple";
 
 function nextQuestion(){
@@ -286,7 +326,7 @@ function nextQuestion(){
   } else {
     choices.classList.add("hidden"); answerArea.classList.remove("hidden"); answerInput.value = ""; answerInput.focus();
     if(mode === "name2formula"){ promptEl.textContent = current.name; hintEl.textContent = "Type the correct formula"; answerInput.placeholder = "e.g., NO3- or O^2-"; }
-    else { promptEl.innerHTML = prettyFormula(current.formula); hintEl.textContent = "Type the ion name"; answerInput.placeholder = "e.g., Nitrate"; }
+    else { promptEl.textContent = prettyFormula(current.formula); hintEl.textContent = "Type the ion name"; answerInput.placeholder = "e.g., Nitrate"; }
   }
   updateScore();
 }
@@ -295,11 +335,11 @@ function reveal(){
   if(mode === "flash"){ hintEl.innerHTML = `<b>${prettyFormula(current.formula)}</b>`; }
   else if(mode==="name2formula"){ tags.innerHTML = `<span class="tag">Answer: <b>${prettyFormula(current.formula)}</b></span>`; }
   else if(mode==="formula2name"){ tags.innerHTML = `<span class="tag">Answer: <b>${current.name}</b></span>`; }
-  else { $$("#choices button").forEach(b=>{ if(normalizeFormula(b.textContent) === current.formula){ b.style.outline = "2px solid var(--accent)"; } }); }
+  else { $$("#choices button").forEach(b=>{ if(normalizeFormula(b.textContent) === normalizeFormula(current.formula)){ b.style.outline = "2px solid var(--accent)"; } }); }
 }
 function check(answer){
   const mode = modeSel.value; let ok = false;
-  if(mode === "multiple" || mode === "name2formula"){ ok = normalizeFormula(answer || answerInput.value) === current.formula; }
+  if(mode === "multiple" || mode === "name2formula"){ ok = normalizeFormula(answer || answerInput.value) === normalizeFormula(current.formula); }
   else if(mode === "formula2name"){ ok = (answer || answerInput.value).trim().toLowerCase() === current.name.toLowerCase(); }
   score.total++; if(ok){ score.correct++; score.streak++; feedback(true); } else { score.streak = 0; feedback(false); }
   updateScore(); setTimeout(nextQuestion, 650);
